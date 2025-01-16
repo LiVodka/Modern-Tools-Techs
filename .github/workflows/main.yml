@@ -1,0 +1,55 @@
+name: CI Workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # collect and upload
+  collect-executables:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Find and zip executables
+        run: |
+          mkdir -p executables
+          find . -type f -executable -exec cp {} executables/ \;
+          zip -r executables.zip executables
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: executables
+          path: executables.zip
+
+  # download
+  run-executables:
+    needs: collect-executables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: executables
+
+      - name: Unzip executables
+        run: unzip executables.zip
+
+      - name: Run lightweight executables
+        run: |
+          for file in executables/*; do
+            timeout 10s "$file" || echo "$file failed or timed out"
+          done
+
+  # new task
+  new-task-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run your new task
+        run: ./run.sh
